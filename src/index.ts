@@ -68,25 +68,31 @@ const AnsiCode = {
   BOLD: "\x1b[1m",
 } as const;
 
-abstract class Ansi {
-  static colorize(color: AnsiCode, txt: string): string {
-    return `${color}${txt}${AnsiCode.RESET}`;
+class Ansi {
+  private code: AnsiCode;
+
+  constructor(code: AnsiCode) {
+    this.code = code;
   }
 
-  static bold(text: string): string {
-    return `${AnsiCode.BOLD}${text}${AnsiCode.RESET}`;
+  static bold(): Ansi {
+    return new Ansi(AnsiCode.BOLD);
   }
 
-  static cyan(text: string): string {
-    return Ansi.colorize(AnsiCode.CYAN, text);
+  static cyan(): Ansi {
+    return new Ansi(AnsiCode.CYAN);
   }
 
-  static red(text: string): string {
-    return Ansi.colorize(AnsiCode.RED, text);
+  static red(): Ansi {
+    return new Ansi(AnsiCode.RED);
   }
 
-  static yellow(text: string): string {
-    return Ansi.colorize(AnsiCode.YELLOW, text);
+  static yellow(): Ansi {
+    return new Ansi(AnsiCode.YELLOW);
+  }
+
+  apply(txt: string) {
+    return `${this.code}${txt}${AnsiCode.RESET}`;
   }
 }
 
@@ -163,7 +169,7 @@ export class EyeTextFormatter implements EyeFormatter {
     const fmtdate = (cfg.timestamp ?? new Date()).toISOString();
     let fmtlabel = `${getLogLevelLabel(cfg.level).padEnd(this.levelpad, " ")}`;
     if (this.colored) {
-      fmtlabel = Ansi.bold(this.colorize(cfg.level, fmtlabel));
+      fmtlabel = Ansi.bold().apply(this.colorize(cfg.level, fmtlabel));
     }
 
     return `[${fmtdate}] ${fmtlabel} ${cfg.msg}${fmtmeta ? ` ${fmtmeta}` : ""}`;
@@ -181,11 +187,11 @@ export class EyeTextFormatter implements EyeFormatter {
         return msg;
       case "error":
       case "fatal":
-        return Ansi.red(msg);
+        return Ansi.red().apply(msg);
       case "info":
-        return Ansi.cyan(msg);
+        return Ansi.cyan().apply(msg);
       case "warn":
-        return Ansi.yellow(msg);
+        return Ansi.yellow().apply(msg);
     }
   }
 }
