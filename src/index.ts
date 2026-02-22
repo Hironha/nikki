@@ -33,11 +33,11 @@ function getFlatKv(
 ): string[] {
   const kv: string[] = [];
 
-  const o = value as Record<string, unknown>;
-  for (const key in o) {
+  const obj = value as Record<string, unknown>;
+  for (const key in obj) {
     path.push(key);
 
-    const value = o[key];
+    const value = obj[key];
     if (Array.isArray(value)) {
       const fullpath = path.join(".");
       value.forEach((v, i) => {
@@ -196,13 +196,19 @@ export class EyeTextFormatter implements EyeFormatter {
   }
 }
 
-export type EyeTransporter = {
+export interface EyeTransporter {
   transport(msg: string): void;
-};
+}
 
 export class EyeStdoutTransporter implements EyeTransporter {
   transport(msg: string): void {
     process.stdout.write(msg);
+  }
+}
+
+export class EyeStderrTransporter implements EyeTransporter {
+  transport(msg: string): void {
+    process.stderr.write(msg);
   }
 }
 
