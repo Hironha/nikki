@@ -9,8 +9,9 @@
   "scripts": {
     "test": "bun test --smol",
     "check:types": "tsc --noEmit",
-    "check:lint": "npx @biomejs/biome lint ./src",
-    "check:fmt": "npx @biomejs/biome format ./src"
+    "check:lint": "npx @biomejs/biome lint ./src ./tests",
+    "check:fmt": "npx @biomejs/biome format ./src ./tests",
+    "check:all": "bun run check:types && bun run check:lint && bun run check:fmt"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.14",

@@ -1,19 +1,26 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
   Eye,
-  EyeTextFormatter,
+  type EyeEntry,
+  type EyeFormatter,
   EyeJsonFormatter,
   type EyeLogLevel,
+  EyeTextFormatter,
   type EyeTransporter,
 } from "../src";
 
 const LOG_LEVELS = ["trace", "debug", "info", "warn", "error", "fatal"];
 
 class BufferTransporter implements EyeTransporter {
+  private formatter: EyeFormatter;
   private buf: string[] = [];
 
-  transport(msg: string): void {
-    this.buf.push(msg);
+  constructor(formatter: EyeFormatter) {
+    this.formatter = formatter;
+  }
+
+  transport(buf: EyeEntry[]): void {
+    this.buf = buf.map((entry) => this.formatter.fmt(entry).concat("\n"));
   }
 
   take(): string[] {
@@ -26,10 +33,10 @@ class BufferTransporter implements EyeTransporter {
 describe("eye", () => {
   describe("Eye", () => {
     test("scoped metadata works", () => {
-      const transporter = new BufferTransporter();
       const formatter = new EyeTextFormatter();
+      const transporter = new BufferTransporter(formatter);
       const correlationId = Bun.randomUUIDv7();
-      const eye = new Eye({ capacity: 10, formatter, transporter })
+      const eye = new Eye({ capacity: 10, transporter })
         .with({ correlation_id: correlationId })
         .with({ service: "hololive" });
 
@@ -253,12 +260,12 @@ describe("eye", () => {
     test("formatting with nested object and with flat works", () => {
       const formatter = new EyeJsonFormatter(true);
       const timestamp = new Date("2024-03-21");
-      const metadata = { hololive: { marinee: "cute", watame: "angel" } };
+      const metadata = { hololive: { marine: "cute", watame: "angel" } };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
 
       const date = timestamp.toISOString();
       expect(out).toStrictEqual(
-        `{"timestamp":"${date}","level":"INFO","msg":"hello, world","hololive.marinee":"cute","hololive.watame":"angel"}`,
+        `{"timestamp":"${date}","level":"INFO","msg":"hello, world","hololive.marine":"cute","hololive.watame":"angel"}`,
       );
     });
   });

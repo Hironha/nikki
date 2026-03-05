@@ -1,5 +1,3 @@
-import process from "node:process";
-
 type ValuesOf<T> = T extends readonly [...any]
   ? T[number]
   : T extends Record<string, any>
@@ -98,7 +96,7 @@ class Ansi {
 
 export type EyeMetadata = Readonly<Record<string, unknown>>;
 
-export type EyeFmtConfig = {
+export type EyeEntry = {
   msg: string;
   level: EyeLogLevel;
   timestamp?: Date;
@@ -106,7 +104,7 @@ export type EyeFmtConfig = {
 };
 
 export interface EyeFormatter {
-  fmt(cfg: EyeFmtConfig): string;
+  fmt(entry: EyeEntry): string;
 }
 
 export class EyeJsonFormatter implements EyeFormatter {
@@ -116,28 +114,28 @@ export class EyeJsonFormatter implements EyeFormatter {
     this.flat = flat ?? false;
   }
 
-  fmt(cfg: EyeFmtConfig): string {
-    const date = cfg.timestamp ?? new Date();
-    let entry: EyeMetadata;
-    if (cfg.metadata != null) {
-      entry = {
+  fmt(entry: EyeEntry): string {
+    const date = entry.timestamp ?? new Date();
+    let log: EyeMetadata;
+    if (entry.metadata != null) {
+      log = {
         timestamp: date.toISOString(),
-        level: getLogLevelLabel(cfg.level),
-        msg: cfg.msg,
-        ...cfg.metadata,
+        level: getLogLevelLabel(entry.level),
+        msg: entry.msg,
+        ...entry.metadata,
       };
     } else {
-      entry = {
+      log = {
         timestamp: date.toISOString(),
-        level: getLogLevelLabel(cfg.level),
-        msg: cfg.msg,
+        level: getLogLevelLabel(entry.level),
+        msg: entry.msg,
       };
     }
 
     if (!this.flat) {
-      return JSON.stringify(entry);
+      return JSON.stringify(log);
     }
-    return this.flatten(entry);
+    return this.flatten(log);
   }
 
   private flatten(value: object): string {
@@ -153,26 +151,26 @@ export class EyeJsonFormatter implements EyeFormatter {
 
 export class EyeTextFormatter implements EyeFormatter {
   private readonly colored: boolean;
-  private readonly levelpad: number;
+  private readonly lvlpad: number;
 
   constructor(colored?: boolean) {
     this.colored = colored ?? false;
-    this.levelpad = Math.max(...EYE_LOG_LEVELS.map((l) => l.length));
+    this.lvlpad = Math.max(...EYE_LOG_LEVELS.map((l) => l.length));
   }
 
-  fmt(cfg: EyeFmtConfig): string {
+  fmt(entry: EyeEntry): string {
     let fmtmeta: string | undefined;
-    if (cfg.metadata) {
-      fmtmeta = getFlatKv(cfg.metadata as Record<string, unknown>, this.fmtkv).join(" ");
+    if (entry.metadata) {
+      fmtmeta = getFlatKv(entry.metadata as Record<string, unknown>, this.fmtkv).join(" ");
     }
 
-    const fmtdate = (cfg.timestamp ?? new Date()).toISOString();
-    let fmtlabel = `${getLogLevelLabel(cfg.level).padEnd(this.levelpad, " ")}`;
+    const fmtdate = (entry.timestamp ?? new Date()).toISOString();
+    let fmtlabel = `${getLogLevelLabel(entry.level).padEnd(this.lvlpad, " ")}`;
     if (this.colored) {
-      fmtlabel = Ansi.bold().apply(this.colorize(cfg.level, fmtlabel));
+      fmtlabel = Ansi.bold().apply(this.colorize(entry.level, fmtlabel));
     }
 
-    return `[${fmtdate}] ${fmtlabel} ${cfg.msg}${fmtmeta ? ` ${fmtmeta}` : ""}`;
+    return `[${fmtdate}] ${fmtlabel} ${entry.msg}${fmtmeta ? ` ${fmtmeta}` : ""}`;
   }
 
   private fmtkv(key: string, value: unknown): string {
@@ -197,39 +195,50 @@ export class EyeTextFormatter implements EyeFormatter {
 }
 
 export interface EyeTransporter {
-  transport(msg: string): void;
+  transport(entries: EyeEntry[]): void;
 }
 
 export class EyeStdoutTransporter implements EyeTransporter {
-  transport(msg: string): void {
-    process.stdout.write(msg);
+  private formatter: EyeFormatter;
+
+  constructor(formatter: EyeFormatter) {
+    this.formatter = formatter;
+  }
+
+  transport(entries: EyeEntry[]): void {
+    const output = entries.map((entry) => this.formatter.fmt(entry).concat("\n")).join("");
+    process.stdout.write(output);
   }
 }
 
 export class EyeStderrTransporter implements EyeTransporter {
-  transport(msg: string): void {
-    process.stderr.write(msg);
+  private formatter: EyeFormatter;
+
+  constructor(formatter: EyeFormatter) {
+    this.formatter = formatter;
+  }
+
+  transport(entries: EyeEntry[]): void {
+    const output = entries.map((entry) => this.formatter.fmt(entry).concat("\n")).join("");
+    process.stderr.write(output);
   }
 }
 
 export type EyeConfig = {
   capacity?: number;
-  formatter?: EyeFormatter;
   transporter?: EyeTransporter;
 };
 
 export class Eye {
-  private buf: string[];
+  private buf: EyeEntry[];
   private metadata: Readonly<EyeMetadata> | undefined;
   private readonly capacity: number;
-  private readonly formatter: EyeFormatter;
   private readonly transporter: EyeTransporter;
 
   constructor(cfg?: EyeConfig) {
     this.buf = [];
     this.capacity = cfg?.capacity ?? 32;
-    this.formatter = cfg?.formatter ?? new EyeTextFormatter();
-    this.transporter = cfg?.transporter ?? new EyeStdoutTransporter();
+    this.transporter = cfg?.transporter ?? new EyeStdoutTransporter(new EyeTextFormatter());
   }
 
   trace(msg: string, metadata?: EyeMetadata): void {
@@ -256,20 +265,19 @@ export class Eye {
     this.log({ msg, level: "fatal", metadata });
   }
 
-  log(cfg: EyeFmtConfig): void {
+  log(entry: EyeEntry): void {
     if (this.buf.length >= this.capacity) {
       this.flush();
     }
 
     if (this.metadata) {
-      if (cfg.metadata) {
-        cfg.metadata = { ...this.metadata, ...cfg.metadata };
+      if (entry.metadata) {
+        entry.metadata = { ...this.metadata, ...entry.metadata };
       } else {
-        cfg.metadata = this.metadata;
+        entry.metadata = this.metadata;
       }
     }
 
-    const entry = this.formatter.fmt(cfg);
     this.buf.push(entry);
   }
 
@@ -279,8 +287,8 @@ export class Eye {
    * operation is complete.
    */
   flush(): void {
-    const msg = this.buf.join("\n").concat("\n");
-    this.transporter.transport(msg);
+    // const msg = this.buf.join("\n").concat("\n");
+    this.transporter.transport(this.buf);
     this.buf = [];
   }
 
@@ -304,7 +312,6 @@ export class Eye {
   private cloneWithConfiguration(): Eye {
     const clone = new Eye({
       capacity: this.capacity,
-      formatter: this.formatter,
       transporter: this.transporter,
     });
     clone.metadata = this.metadata;
