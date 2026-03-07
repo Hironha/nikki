@@ -1,25 +1,25 @@
 import { describe, expect, test } from "bun:test";
 import {
-  Eye,
-  type EyeEntry,
-  type EyeFormatter,
-  EyeJsonFormatter,
-  type EyeLogLevel,
-  EyeTextFormatter,
-  type EyeTransporter,
+  Nikki,
+  type NikkiEntry,
+  type NikkiFormatter,
+  NikkiJson,
+  type NikkiLogLevel,
+  NikkiText,
+  type NikkiTransporter,
 } from "../src";
 
 const LOG_LEVELS = ["trace", "debug", "info", "warn", "error", "fatal"];
 
-class BufferTransporter implements EyeTransporter {
-  private formatter: EyeFormatter;
+class BufferTransporter implements NikkiTransporter {
+  private formatter: NikkiFormatter;
   private buf: string[] = [];
 
-  constructor(formatter: EyeFormatter) {
+  constructor(formatter: NikkiFormatter) {
     this.formatter = formatter;
   }
 
-  transport(buf: EyeEntry[]): void {
+  transport(buf: NikkiEntry[]): void {
     this.buf = buf.map((entry) => this.formatter.fmt(entry).concat("\n"));
   }
 
@@ -30,19 +30,19 @@ class BufferTransporter implements EyeTransporter {
   }
 }
 
-describe("eye", () => {
-  describe("Eye", () => {
+describe("nikki", () => {
+  describe("Nikki", () => {
     test("scoped metadata works", () => {
-      const formatter = new EyeTextFormatter();
+      const formatter = new NikkiText();
       const transporter = new BufferTransporter(formatter);
       const correlationId = Bun.randomUUIDv7();
-      const eye = new Eye({ capacity: 10, transporter })
+      const nikki = new Nikki({ capacity: 10, transporter })
         .with({ correlation_id: correlationId })
         .with({ service: "hololive" });
 
       const timestamp = new Date("2025-12-03");
-      eye.log({ level: "info", msg: "Hello, World", timestamp });
-      eye.flush();
+      nikki.log({ level: "info", msg: "Hello, World", timestamp });
+      nikki.flush();
 
       const buffer = transporter.take();
       const date = timestamp.toISOString();
@@ -52,11 +52,11 @@ describe("eye", () => {
     });
   });
 
-  describe("EyeTextFmt", () => {
+  describe("NikkiText", () => {
     test.each(LOG_LEVELS)("simple %s formatting works", (level) => {
-      const formatter = new EyeTextFormatter();
+      const formatter = new NikkiText();
       const timestamp = new Date("2024-03-21");
-      const out = formatter.fmt({ msg: "hello, world", level: level as EyeLogLevel, timestamp });
+      const out = formatter.fmt({ msg: "hello, world", level: level as NikkiLogLevel, timestamp });
       const levelLabel = level.toUpperCase().padEnd(5, " ");
 
       const date = timestamp.toISOString();
@@ -64,7 +64,7 @@ describe("eye", () => {
     });
 
     test("formatting with string in metadata works", () => {
-      const formatter = new EyeTextFormatter();
+      const formatter = new NikkiText();
       const timestamp = new Date("2024-03-21");
       const metadata = { name: "marine" };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -74,7 +74,7 @@ describe("eye", () => {
     });
 
     test("formatting with int in metadata works", () => {
-      const formatter = new EyeTextFormatter();
+      const formatter = new NikkiText();
       const timestamp = new Date("2024-03-21");
       const metadata = { age: 17 };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -84,7 +84,7 @@ describe("eye", () => {
     });
 
     test("formatting with float in metadata works", () => {
-      const formatter = new EyeTextFormatter();
+      const formatter = new NikkiText();
       const timestamp = new Date("2024-03-21");
 
       const metadata = { weight: 45.8 };
@@ -95,7 +95,7 @@ describe("eye", () => {
     });
 
     test("formatting with boolean in metadata works", () => {
-      const formatter = new EyeTextFormatter();
+      const formatter = new NikkiText();
       const timestamp = new Date("2024-03-21");
       const metadata = { female: true };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -105,7 +105,7 @@ describe("eye", () => {
     });
 
     test("formatting with null in metadata works", () => {
-      const formatter = new EyeTextFormatter();
+      const formatter = new NikkiText();
       const timestamp = new Date("2024-03-21");
 
       const metadata = { cat: null };
@@ -116,7 +116,7 @@ describe("eye", () => {
     });
 
     test("formatting with undefined in metadata works", () => {
-      const formatter = new EyeTextFormatter();
+      const formatter = new NikkiText();
       const timestamp = new Date("2024-03-21");
       const metadata = { cat: undefined };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -126,7 +126,7 @@ describe("eye", () => {
     });
 
     test("formatting with array in metadata works", () => {
-      const formatter = new EyeTextFormatter();
+      const formatter = new NikkiText();
       const timestamp = new Date("2024-03-21");
       const metadata = { pets: ["rabbit", "sheep"] };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -138,7 +138,7 @@ describe("eye", () => {
     });
 
     test("formatting with nested object in metadata works", () => {
-      const formatter = new EyeTextFormatter();
+      const formatter = new NikkiText();
       const timestamp = new Date("2024-03-21");
       const metadata = { hololive: { marinee: "cute", watame: "angel" } };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -150,11 +150,11 @@ describe("eye", () => {
     });
   });
 
-  describe("EyeJsonFmt", () => {
+  describe("NikkiJson", () => {
     test.each(LOG_LEVELS)("simple %s formatting works", (level) => {
-      const formatter = new EyeJsonFormatter();
+      const formatter = new NikkiJson();
       const timestamp = new Date("2024-03-21");
-      const out = formatter.fmt({ msg: "hello, world", level: level as EyeLogLevel, timestamp });
+      const out = formatter.fmt({ msg: "hello, world", level: level as NikkiLogLevel, timestamp });
       const levelLabel = level.toUpperCase();
 
       const date = timestamp.toISOString();
@@ -164,7 +164,7 @@ describe("eye", () => {
     });
 
     test("formatting with string in metadata works", () => {
-      const formatter = new EyeJsonFormatter();
+      const formatter = new NikkiJson();
       const timestamp = new Date("2024-03-21");
       const metadata = { name: "marine" };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -176,7 +176,7 @@ describe("eye", () => {
     });
 
     test("formatting with int in metadata works", () => {
-      const formatter = new EyeJsonFormatter();
+      const formatter = new NikkiJson();
       const timestamp = new Date("2024-03-21");
       const metadata = { age: 17 };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -188,7 +188,7 @@ describe("eye", () => {
     });
 
     test("formatting with float in metadata works", () => {
-      const formatter = new EyeJsonFormatter();
+      const formatter = new NikkiJson();
       const timestamp = new Date("2024-03-21");
       const metadata = { weight: 45.8 };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -200,7 +200,7 @@ describe("eye", () => {
     });
 
     test("formatting with boolean in metadata works", () => {
-      const formatter = new EyeJsonFormatter();
+      const formatter = new NikkiJson();
       const timestamp = new Date("2024-03-21");
       const metadata = { female: true };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -212,7 +212,7 @@ describe("eye", () => {
     });
 
     test("formatting with null in metadata works", () => {
-      const formatter = new EyeJsonFormatter();
+      const formatter = new NikkiJson();
       const timestamp = new Date("2024-03-21");
       const metadata = { cat: null };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -224,7 +224,7 @@ describe("eye", () => {
     });
 
     test("formatting with undefined in metadata gets stripped", () => {
-      const formatter = new EyeJsonFormatter();
+      const formatter = new NikkiJson();
       const timestamp = new Date("2024-03-21");
       const metadata = { cat: undefined };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -234,7 +234,7 @@ describe("eye", () => {
     });
 
     test("formatting with array in metadata works", () => {
-      const formatter = new EyeJsonFormatter();
+      const formatter = new NikkiJson();
       const timestamp = new Date("2024-03-21");
       const metadata = { pets: ["rabbit", "sheep"] };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -246,7 +246,7 @@ describe("eye", () => {
     });
 
     test("formatting with nested object and without flat works", () => {
-      const formatter = new EyeJsonFormatter();
+      const formatter = new NikkiJson();
       const timestamp = new Date("2024-03-21");
       const metadata = { hololive: { marinee: "cute", watame: "angel" } };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });
@@ -258,7 +258,7 @@ describe("eye", () => {
     });
 
     test("formatting with nested object and with flat works", () => {
-      const formatter = new EyeJsonFormatter(true);
+      const formatter = new NikkiJson(true);
       const timestamp = new Date("2024-03-21");
       const metadata = { hololive: { marine: "cute", watame: "angel" } };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });

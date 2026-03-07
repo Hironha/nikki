@@ -1,1 +1,0 @@
-- [x] Revalidate current design workflow interaction, because the Transporter has no access to individual log configuration, such as the level. And this might be good to have, since the Transporter can send the log to different locations depending on the log level.

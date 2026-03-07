@@ -4,10 +4,10 @@ type ValuesOf<T> = T extends readonly [...any]
     ? T[keyof T]
     : never;
 
-const EYE_LOG_LEVELS = ["trace", "debug", "info", "warn", "error", "fatal"] as const;
-export type EyeLogLevel = ValuesOf<typeof EYE_LOG_LEVELS>;
+const NIKKI_LOG_LEVELS = ["trace", "debug", "info", "warn", "error", "fatal"] as const;
+export type NikkiLogLevel = ValuesOf<typeof NIKKI_LOG_LEVELS>;
 
-function getLogLevelLabel(level: EyeLogLevel): string {
+function getLogLevelLabel(level: NikkiLogLevel): string {
   switch (level) {
     case "trace":
       return "TRACE";
@@ -94,29 +94,29 @@ class Ansi {
   }
 }
 
-export type EyeMetadata = Readonly<Record<string, unknown>>;
+export type NikkiMetadata = Readonly<Record<string, unknown>>;
 
-export type EyeEntry = {
+export type NikkiEntry = {
   msg: string;
-  level: EyeLogLevel;
+  level: NikkiLogLevel;
   timestamp?: Date;
-  metadata?: EyeMetadata;
+  metadata?: NikkiMetadata;
 };
 
-export interface EyeFormatter {
-  fmt(entry: EyeEntry): string;
+export interface NikkiFormatter {
+  fmt(entry: NikkiEntry): string;
 }
 
-export class EyeJsonFormatter implements EyeFormatter {
+export class NikkiJson implements NikkiFormatter {
   private flat: boolean;
 
   constructor(flat?: boolean) {
     this.flat = flat ?? false;
   }
 
-  fmt(entry: EyeEntry): string {
+  fmt(entry: NikkiEntry): string {
     const date = entry.timestamp ?? new Date();
-    let log: EyeMetadata;
+    let log: NikkiMetadata;
     if (entry.metadata != null) {
       log = {
         timestamp: date.toISOString(),
@@ -149,16 +149,16 @@ export class EyeJsonFormatter implements EyeFormatter {
   }
 }
 
-export class EyeTextFormatter implements EyeFormatter {
+export class NikkiText implements NikkiFormatter {
   private readonly colored: boolean;
   private readonly lvlpad: number;
 
   constructor(colored?: boolean) {
     this.colored = colored ?? false;
-    this.lvlpad = Math.max(...EYE_LOG_LEVELS.map((l) => l.length));
+    this.lvlpad = Math.max(...NIKKI_LOG_LEVELS.map((l) => l.length));
   }
 
-  fmt(entry: EyeEntry): string {
+  fmt(entry: NikkiEntry): string {
     let fmtmeta: string | undefined;
     if (entry.metadata) {
       fmtmeta = getFlatKv(entry.metadata as Record<string, unknown>, this.fmtkv).join(" ");
@@ -178,7 +178,7 @@ export class EyeTextFormatter implements EyeFormatter {
     return `"${key}"=${v}`;
   }
 
-  private colorize(level: EyeLogLevel, msg: string): string {
+  private colorize(level: NikkiLogLevel, msg: string): string {
     switch (level) {
       case "debug":
       case "trace":
@@ -194,78 +194,78 @@ export class EyeTextFormatter implements EyeFormatter {
   }
 }
 
-export interface EyeTransporter {
-  transport(entries: EyeEntry[]): void;
+export interface NikkiTransporter {
+  transport(entries: NikkiEntry[]): void;
 }
 
-export class EyeStdoutTransporter implements EyeTransporter {
-  private formatter: EyeFormatter;
+export class NikkiStdout implements NikkiTransporter {
+  private formatter: NikkiFormatter;
 
-  constructor(formatter: EyeFormatter) {
+  constructor(formatter: NikkiFormatter) {
     this.formatter = formatter;
   }
 
-  transport(entries: EyeEntry[]): void {
+  transport(entries: NikkiEntry[]): void {
     const output = entries.map((entry) => this.formatter.fmt(entry).concat("\n")).join("");
     process.stdout.write(output);
   }
 }
 
-export class EyeStderrTransporter implements EyeTransporter {
-  private formatter: EyeFormatter;
+export class NikkiStderr implements NikkiTransporter {
+  private formatter: NikkiFormatter;
 
-  constructor(formatter: EyeFormatter) {
+  constructor(formatter: NikkiFormatter) {
     this.formatter = formatter;
   }
 
-  transport(entries: EyeEntry[]): void {
+  transport(entries: NikkiEntry[]): void {
     const output = entries.map((entry) => this.formatter.fmt(entry).concat("\n")).join("");
     process.stderr.write(output);
   }
 }
 
-export type EyeConfig = {
+export type NikkiConfig = {
   capacity?: number;
-  transporter?: EyeTransporter;
+  transporter?: NikkiTransporter;
 };
 
-export class Eye {
-  private buf: EyeEntry[];
-  private metadata: Readonly<EyeMetadata> | undefined;
+export class Nikki {
+  private buf: NikkiEntry[];
+  private metadata: Readonly<NikkiMetadata> | undefined;
   private readonly capacity: number;
-  private readonly transporter: EyeTransporter;
+  private readonly transporter: NikkiTransporter;
 
-  constructor(cfg?: EyeConfig) {
+  constructor(cfg?: NikkiConfig) {
     this.buf = [];
     this.capacity = cfg?.capacity ?? 32;
-    this.transporter = cfg?.transporter ?? new EyeStdoutTransporter(new EyeTextFormatter());
+    this.transporter = cfg?.transporter ?? new NikkiStdout(new NikkiText());
   }
 
-  trace(msg: string, metadata?: EyeMetadata): void {
+  trace(msg: string, metadata?: NikkiMetadata): void {
     this.log({ msg, level: "trace", metadata });
   }
 
-  debug(msg: string, metadata?: EyeMetadata): void {
+  debug(msg: string, metadata?: NikkiMetadata): void {
     this.log({ msg, level: "debug", metadata });
   }
 
-  info(msg: string, metadata?: EyeMetadata): void {
+  info(msg: string, metadata?: NikkiMetadata): void {
     this.log({ msg, level: "info", metadata });
   }
 
-  warn(msg: string, metadata?: EyeMetadata): void {
+  warn(msg: string, metadata?: NikkiMetadata): void {
     this.log({ msg, level: "warn", metadata });
   }
 
-  error(msg: string, metadata?: EyeMetadata): void {
+  error(msg: string, metadata?: NikkiMetadata): void {
     this.log({ msg, level: "error", metadata });
   }
 
-  fatal(msg: string, metadata?: EyeMetadata): void {
+  fatal(msg: string, metadata?: NikkiMetadata): void {
     this.log({ msg, level: "fatal", metadata });
   }
 
-  log(entry: EyeEntry): void {
+  log(entry: NikkiEntry): void {
     if (this.buf.length >= this.capacity) {
       this.flush();
     }
@@ -287,7 +287,6 @@ export class Eye {
    * operation is complete.
    */
   flush(): void {
-    // const msg = this.buf.join("\n").concat("\n");
     this.transporter.transport(this.buf);
     this.buf = [];
   }
@@ -297,9 +296,9 @@ export class Eye {
    * subsequent log entries. If metadata already exists, the new metadata is
    * merged with the existing one.
    *
-   * @returns A new instance of {@link Eye}
+   * @returns A new instance of {@link Nikki}
    */
-  with(metadata: EyeMetadata): Eye {
+  with(metadata: NikkiMetadata): Nikki {
     const clone = this.cloneWithConfiguration();
     if (clone.metadata) {
       clone.metadata = { ...clone.metadata, ...metadata };
@@ -309,8 +308,8 @@ export class Eye {
     return clone;
   }
 
-  private cloneWithConfiguration(): Eye {
-    const clone = new Eye({
+  private cloneWithConfiguration(): Nikki {
+    const clone = new Nikki({
       capacity: this.capacity,
       transporter: this.transporter,
     });
