@@ -258,7 +258,7 @@ describe("nikki", () => {
     });
 
     test("formatting with nested object and with flat works", () => {
-      const formatter = new NikkiJson(true);
+      const formatter = new NikkiJson({ flat: true });
       const timestamp = new Date("2024-03-21");
       const metadata = { hololive: { marine: "cute", watame: "angel" } };
       const out = formatter.fmt({ msg: "hello, world", level: "info", timestamp, metadata });

@@ -107,11 +107,33 @@ export interface NikkiFormatter {
   fmt(entry: NikkiEntry): string;
 }
 
+export type NikkiJsonConfig = {
+  /**
+   * Define if properties of nested objects in metadata should be flatten into
+   * a single property.
+   * @default false
+   * @example
+   * const formatter = new NikkiJson({ flat: true });
+   * const out = formatter.fmt({
+   *   msg: "Hello, World",
+   *   level: "info",
+   *   timestamp: new Date("2026-03-07T17:19:04.699Z"),
+   *   metadata: {
+   *     idol: {
+   *       name: "marine"
+   *     }
+   *   }
+   * });
+   * expect(out).toStrictEqual(`{"timestamp":"2026-03-07T17:19:04.699Z","level":"INFO","msg":"Hello, World","idol.name":"marine"}`)
+   */
+  flat?: boolean;
+};
+
 export class NikkiJson implements NikkiFormatter {
   private flat: boolean;
 
-  constructor(flat?: boolean) {
-    this.flat = flat ?? false;
+  constructor(cfg?: NikkiJsonConfig) {
+    this.flat = cfg?.flat ?? false;
   }
 
   fmt(entry: NikkiEntry): string {
@@ -149,12 +171,20 @@ export class NikkiJson implements NikkiFormatter {
   }
 }
 
+export type NikkiTextConfig = {
+  /**
+   * Define if output should be colored based on log level
+   * @default false
+   */
+  colored?: boolean;
+};
+
 export class NikkiText implements NikkiFormatter {
   private readonly colored: boolean;
   private readonly lvlpad: number;
 
-  constructor(colored?: boolean) {
-    this.colored = colored ?? false;
+  constructor(cfg?: NikkiTextConfig) {
+    this.colored = cfg?.colored ?? false;
     this.lvlpad = Math.max(...NIKKI_LOG_LEVELS.map((l) => l.length));
   }
 
@@ -231,7 +261,7 @@ export type NikkiConfig = {
 
 export class Nikki {
   private buf: NikkiEntry[];
-  private metadata: Readonly<NikkiMetadata> | undefined;
+  private metadata: NikkiMetadata | undefined;
   private readonly capacity: number;
   private readonly transporter: NikkiTransporter;
 
@@ -241,30 +271,51 @@ export class Nikki {
     this.transporter = cfg?.transporter ?? new NikkiStdout(new NikkiText());
   }
 
+  /**
+   * Logs a trace message.
+   */
   trace(msg: string, metadata?: NikkiMetadata): void {
     this.log({ msg, level: "trace", metadata });
   }
 
+  /**
+   * Logs a debug message.
+   */
   debug(msg: string, metadata?: NikkiMetadata): void {
     this.log({ msg, level: "debug", metadata });
   }
 
+  /**
+   * Logs an info message.
+   */
   info(msg: string, metadata?: NikkiMetadata): void {
     this.log({ msg, level: "info", metadata });
   }
 
+  /**
+   * Logs a warning message.
+   */
   warn(msg: string, metadata?: NikkiMetadata): void {
     this.log({ msg, level: "warn", metadata });
   }
 
+  /**
+   * Logs an error message.
+   */
   error(msg: string, metadata?: NikkiMetadata): void {
     this.log({ msg, level: "error", metadata });
   }
 
+  /**
+   * Logs a fatal message.
+   */
   fatal(msg: string, metadata?: NikkiMetadata): void {
     this.log({ msg, level: "fatal", metadata });
   }
 
+  /**
+   * Logs a custom entry.
+   */
   log(entry: NikkiEntry): void {
     if (this.buf.length >= this.capacity) {
       this.flush();
