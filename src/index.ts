@@ -99,7 +99,7 @@ export type NikkiMetadata = Readonly<Record<string, unknown>>;
 export type NikkiEntry = {
   msg: string;
   level: NikkiLogLevel;
-  timestamp?: Date;
+  time: Date;
   metadata?: NikkiMetadata;
 };
 
@@ -117,14 +117,14 @@ export type NikkiJsonConfig = {
    * const out = formatter.fmt({
    *   msg: "Hello, World",
    *   level: "info",
-   *   timestamp: new Date("2026-03-07T17:19:04.699Z"),
+   *   time: new Date("2026-03-07T17:19:04.699Z"),
    *   metadata: {
    *     idol: {
    *       name: "marine"
    *     }
    *   }
    * });
-   * expect(out).toStrictEqual(`{"timestamp":"2026-03-07T17:19:04.699Z","level":"INFO","msg":"Hello, World","idol.name":"marine"}`)
+   * expect(out).toStrictEqual(`{"time":"2026-03-07T17:19:04.699Z","level":"INFO","msg":"Hello, World","idol.name":"marine"}`)
    */
   flat?: boolean;
 };
@@ -137,18 +137,17 @@ export class NikkiJson implements NikkiFormatter {
   }
 
   fmt(entry: NikkiEntry): string {
-    const date = entry.timestamp ?? new Date();
     let log: NikkiMetadata;
     if (entry.metadata != null) {
       log = {
-        timestamp: date.toISOString(),
+        time: entry.time.toISOString(),
         level: getLogLevelLabel(entry.level),
         msg: entry.msg,
         ...entry.metadata,
       };
     } else {
       log = {
-        timestamp: date.toISOString(),
+        time: entry.time.toISOString(),
         level: getLogLevelLabel(entry.level),
         msg: entry.msg,
       };
@@ -194,7 +193,7 @@ export class NikkiText implements NikkiFormatter {
       fmtmeta = getFlatKv(entry.metadata as Record<string, unknown>, this.fmtkv).join(" ");
     }
 
-    const fmtdate = (entry.timestamp ?? new Date()).toISOString();
+    const fmtdate = entry.time.toISOString();
     let fmtlabel = `${getLogLevelLabel(entry.level).padEnd(this.lvlpad, " ")}`;
     if (this.colored) {
       fmtlabel = Ansi.bold().apply(this.colorize(entry.level, fmtlabel));
@@ -275,42 +274,48 @@ export class Nikki {
    * Logs a trace message.
    */
   trace(msg: string, metadata?: NikkiMetadata): void {
-    this.log({ msg, level: "trace", metadata });
+    const time = new Date();
+    this.log({ msg, level: "trace", time: time, metadata });
   }
 
   /**
    * Logs a debug message.
    */
   debug(msg: string, metadata?: NikkiMetadata): void {
-    this.log({ msg, level: "debug", metadata });
+    const time = new Date();
+    this.log({ msg, level: "debug", time: time, metadata });
   }
 
   /**
    * Logs an info message.
    */
   info(msg: string, metadata?: NikkiMetadata): void {
-    this.log({ msg, level: "info", metadata });
+    const time = new Date();
+    this.log({ msg, level: "info", time: time, metadata });
   }
 
   /**
    * Logs a warning message.
    */
   warn(msg: string, metadata?: NikkiMetadata): void {
-    this.log({ msg, level: "warn", metadata });
+    const time = new Date();
+    this.log({ msg, level: "warn", time: time, metadata });
   }
 
   /**
    * Logs an error message.
    */
   error(msg: string, metadata?: NikkiMetadata): void {
-    this.log({ msg, level: "error", metadata });
+    const time = new Date();
+    this.log({ msg, level: "error", time: time, metadata });
   }
 
   /**
    * Logs a fatal message.
    */
   fatal(msg: string, metadata?: NikkiMetadata): void {
-    this.log({ msg, level: "fatal", metadata });
+    const time = new Date();
+    this.log({ msg, level: "fatal", time: time, metadata });
   }
 
   /**
